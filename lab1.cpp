@@ -91,8 +91,8 @@ int main(void)
         //declare a box shape
         game.box.width = 100;
         game.box.height = 10;
-        game.box.center.x = 120 + 5*65;
-        game.box.center.y = 500 - 5*60;
+        game.box.center.x = 120;
+        game.box.center.y = 500;
 
         //start animation
         while(!done) {

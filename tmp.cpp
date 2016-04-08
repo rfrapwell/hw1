@@ -1,4 +1,30 @@
-//Ryan Frapwell Homework 1
+//cs335 Spring 2015 Lab-1
+//This program demonstrates the use of OpenGL and XWindows
+//
+//Assignment is to modify this program.
+//You will follow along with your instructor.
+//
+//Elements to be learned in this lab...
+//
+//. general animation framework
+//. animation loop
+//. object definition and movement
+//. collision detection
+//. mouse/keyboard interaction
+//. object constructor
+//. coding style
+//. defined constants
+//. use of static variables
+//. dynamic memory allocation
+//. simple opengl components
+//. git
+//
+//elements we will add to program...
+//. Game constructor
+//. multiple particles
+//. gravity
+//. collision detection
+//. more objects
 //
 #include <iostream>
 #include <cstdlib>
@@ -12,7 +38,7 @@
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 600
 
-#define MAX_PARTICLES 5000
+#define MAX_PARTICLES 500
 #define GRAVITY 0.1
 
 //X Windows variables
@@ -20,9 +46,6 @@ Display *dpy;
 Window win;
 GLXContext glc;
 
-//check variblei
-int showbubbles = 0;
-int cycle = 5;
 //Structures
 
 struct Vec {
@@ -41,7 +64,7 @@ struct Particle {
 };
 
 struct Game {
-        Shape box[5];
+        Shape box;
         Particle particle[MAX_PARTICLES];
         int n;
 };
@@ -54,25 +77,6 @@ void check_mouse(XEvent *e, Game *game);
 int check_keys(XEvent *e, Game *game);
 void movement(Game *game);
 void render(Game *game);
-void physics(Game *game);
-
-//-----------------------------------------------------------------------------
-//Setup timers
-const double physicsRate = 1.0 / 30.0;
-const double oobillion = 1.0 / 1e9;
-struct timespec timeStart, timeCurrent;
-struct timespec timePause;
-double physicsCountdown=0.0;
-double timeSpan=0.0;
-unsigned int upause=0;
-double timeDiff(struct timespec *start, struct timespec *end) {
-	return (double)(end->tv_sec - start->tv_sec ) +
-			(double)(end->tv_nsec - start->tv_nsec) * oobillion;
-}
-void timeCopy(struct timespec *dest, struct timespec *source) {
-	memcpy(dest, source, sizeof(struct timespec));
-}
-//-----------------------------------------------------------------------------
 
 int main(void)
 {
@@ -83,20 +87,12 @@ int main(void)
         //declare game object
         Game game;
         game.n=0;
-	
-	clock_gettime(CLOCK_REALTIME, &timePause);
-	clock_gettime(CLOCK_REALTIME, &timeStart);
 
         //declare a box shape
-	for(int i = 0; i<5; i++)
-	{
-        	game.box[i].width = 100;
-        	game.box[i].height = 15;
-       		
-		game.box[i].center.x = 120 + (60*i);
-       		game.box[i].center.y = 500 - (100*i);
-	}
-
+        game.box.width = 100;
+        game.box.height = 10;
+        game.box.center.x = 120 + 5*65;
+        game.box.center.y = 500 - 5*60;
 
         //start animation
         while(!done) {
@@ -105,17 +101,7 @@ int main(void)
                         XNextEvent(dpy, &e);
                         check_mouse(&e, &game);
                         done = check_keys(&e, &game);
-		}
-
-		clock_gettime(CLOCK_REALTIME, &timeCurrent);
-		timeSpan = timeDiff(&timeStart, &timeCurrent);
-		timeCopy(&timeStart, &timeCurrent);
-		physicsCountdown += timeSpan;
-		
-		while(physicsCountdown >= physicsRate) {
-			physics(&game);
-			physicsCountdown -= physicsRate;
-		}
+                }
                 movement(&game);
                 render(&game);
                 glXSwapBuffers(dpy, win);
@@ -182,50 +168,14 @@ void init_opengl(void)
 void makeParticle(Game *game, int x, int y) {
         if (game->n >= MAX_PARTICLES)
                 return;
-	if(showbubbles == 1){
-        	Particle *p = &game->particle[game->n];
-        	p->s.center.x = x;
-        	p->s.center.y = y;
-        	p->velocity.y = 3.0;
-		int loop = 0;
-		if((cycle%5) == 0){
-        		p->velocity.x = 0;
-		}
-		else if((cycle%5) == 1){
-        		p->velocity.x = -1.0;
-		}
-		else if((cycle%5) == 2){
-        		p->velocity.x = 1.0;
-		}
-		else if((cycle%5) == 3){
-        		p->velocity.x = .5;
-		}
-		else if((cycle%5) == 4){
-        		p->velocity.x = -.5;
-		}
-		loop++;
-		cycle++;
-        	game->n++;
-	} else if(showbubbles == 0){
-        	Particle *p = &game->particle[game->n];
-        	p->s.center.x = x;
-        	p->s.center.y = y;
-        	p->velocity.y = -4.0;
-        	p->velocity.x =  1.0;
-        	game->n++;
-	}
-}
-
-void physics(Game *game)
-{
-	if (showbubbles){
-		int loop = 0;
-		while(loop<3)
-		{
-			makeParticle(game, 120, 560);
-			loop++;
-		}
-	}
+        //std::cout << "makeParticle()" << x << " " << y << std::endl;
+        //position of particle
+        Particle *p = &game->particle[game->n];
+        p->s.center.x = x;
+        p->s.center.y = y;
+        p->velocity.y = -4.0;
+        p->velocity.x =  1.0;
+        game->n++;
 }
 
 void check_mouse(XEvent *e, Game *game)
@@ -255,6 +205,8 @@ void check_mouse(XEvent *e, Game *game)
                 savey = e->xbutton.y;
                 if (++n < 10)
                         return;
+                int y = WINDOW_HEIGHT - e->xbutton.y;
+                makeParticle(game, e->xbutton.x, y);
 
 
         }
@@ -263,20 +215,14 @@ void check_mouse(XEvent *e, Game *game)
 int check_keys(XEvent *e, Game *game)
 {
         //Was there input from the keyboard?
-        int key = XLookupKeysym(&e->xkey, 0);
         if (e->type == KeyPress) {
+                int key = XLookupKeysym(&e->xkey, 0);
                 if (key == XK_Escape) {
                         return 1;
                 }
-	} else {
-	    return 0;
-	}
-	switch(key){
-	    case XK_b:
-		showbubbles ^=1;
-        	std::cout << "hit b" << std::endl;
-	}
-		
+                //You may check other keys here.
+
+        }
         return 0;
 }
 void movement(Game *game)
@@ -295,30 +241,15 @@ void movement(Game *game)
                 p->velocity.y -= 0.2;
 
                 //check for collision with shapes...
-                Shape *s[5];
-		for(int z=0; z < 5; z++){
-                	s[z] = &game->box[z];
-		}
+                Shape *s;
+                s = &game->box;
+                if (p->s.center.y >= s->center.y - (s->height) &&
+                    p->s.center.y <= s->center.y + (s->height) &&
+                    p->s.center.x >= s->center.x - (s->width) &&
+                    p->s.center.x <= s->center.x + (s->width)) {
+                        p->velocity.y *= -1.0;
+                }
 
-		for(int x=0; x < 5; x++){
-
-                	if (p->s.center.y >= s[x]->center.y - (s[x]->height) &&
-                    	p->s.center.y <= s[x]->center.y + (s[x]->height) &&
-                    	p->s.center.x >= s[x]->center.x - (s[x]->width) &&
-                    	p->s.center.x <= s[x]->center.x + (s[x]->width)) {
-
-                        	p->velocity.y = 0;
-				if (p->velocity.x == 0){
-				    p->velocity.x = 1;
-				}
-				if (p->velocity.x == -.5){
-				    p->velocity.x = -1;
-				}
-				if (p->velocity.x == .5){
-				    p->velocity.x = 1;
-				}
-                	}	
-		}
                 //check for off-screen
                 if (p->s.center.y < 0.0) {
                         std::cout << "off screen" << std::endl;
@@ -334,24 +265,21 @@ void render(Game *game)
         glClear(GL_COLOR_BUFFER_BIT);
         //Draw shapes...
 
-        //draw box1
-        Shape *s1[5];
-	
-	for(int x=0; x < 5; x++){
-	        glColor3ub(90,140,90);
-	        s1[x] = &game->box[x];
- 	       	glPushMatrix();
-	        glTranslatef(s1[x]->center.x, s1[x]->center.y, s1[x]->center.z);
-	        w = s1[x]->width;
-	        h = s1[x]->height;
-	        glBegin(GL_QUADS);
-	       	        glVertex2i(-w,-h);
-	                glVertex2i(-w, h);
-	                glVertex2i( w, h);
-	                glVertex2i( w,-h);
-	        glEnd();
-	        glPopMatrix();
-	}
+        //draw box
+        Shape *s;
+        glColor3ub(90,140,90);
+        s = &game->box;
+        glPushMatrix();
+        glTranslatef(s->center.x, s->center.y, s->center.z);
+        w = s->width;
+        h = s->height;
+        glBegin(GL_QUADS);
+                glVertex2i(-w,-h);
+                glVertex2i(-w, h);
+                glVertex2i( w, h);
+                glVertex2i( w,-h);
+        glEnd();
+        glPopMatrix();
 
         //draw all particles here
         glPushMatrix();
@@ -368,9 +296,6 @@ void render(Game *game)
                 glEnd();
                 glPopMatrix();
         }
-/*	if(showbubbles){
-	    makeParticle(game, 120, 520);
-	}*/
 }
 
 
