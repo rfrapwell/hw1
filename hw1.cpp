@@ -8,6 +8,9 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <GL/glx.h>
+extern "C" {
+        #include "fonts.h"
+}
 
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 600
@@ -96,6 +99,10 @@ int main(void)
 		game.box[i].center.x = 120 + (60*i);
        		game.box[i].center.y = 500 - (100*i);
 	}
+
+	game.circle.radius = .5;
+        game.circle.center.x = 60 + 9*65;
+        game.circle.center.y = 450- 8*60;
 
 
         //start animation
@@ -350,7 +357,24 @@ void render(Game *game)
 	                glVertex2i( w, h);
 	                glVertex2i( w,-h);
 	        glEnd();
-	        glPopMatrix();
+	        glPopMatrix();        glColor3ub(90,140,90);
+        Shape *c = &game->circle;
+        glPushMatrix();
+        glTranslatef(c->center.x, c->center.y, c->center.z);
+        w = c->width;
+        h = c->height;
+        glBegin(GL_LINE_LOOP);
+        for(int q = 0; q <= 200; q++) {
+                double ang = 2*3.14* q / 200;
+                double x = 150 * cos(ang);
+                double y = 150 * sin(ang);
+                glVertex2d(x,y);
+        }
+
+
+        glEnd();
+        glPopMatrix();
+
 	}
 
         //draw all particles here
@@ -368,9 +392,5 @@ void render(Game *game)
                 glEnd();
                 glPopMatrix();
         }
-/*	if(showbubbles){
-	    makeParticle(game, 120, 520);
-	}*/
 }
-
 
